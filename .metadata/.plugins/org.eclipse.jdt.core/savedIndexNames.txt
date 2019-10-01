@@ -1,0 +1,4 @@
+INDEX VERSION 1.131+/root/bigFatWorkspace/M2/AAGA/.metadata/.plugins/org.eclipse.jdt.core
+2336232440.index
+4232520558.index
+1575830758.index
