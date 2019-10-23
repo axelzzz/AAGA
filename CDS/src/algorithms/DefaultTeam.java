@@ -404,8 +404,8 @@ public class DefaultTeam {
 		public ArrayList<Point> getStable2(ArrayList<Point> points, int edgeThreshold){
 			ArrayList<Point> stable = stable2(points, edgeThreshold);
 			int cpt=0;
-			while(cpt < 500 && points.size() > 0) {
-				System.out.println("nb pts "+points.size());
+			while(cpt < 100 && points.size() > 0) {
+				//System.out.println("nb pts "+points.size());
 				ArrayList<Point> tmp = stable2(points, edgeThreshold);
 				if(tmp.size() > stable.size())stable = tmp;
 				cpt++;
@@ -730,25 +730,6 @@ public class DefaultTeam {
 		
 		
 		
-		/*
-		 public boolean isDominant(ArrayList<Point> origins,
-					ArrayList<Point> toTest,
-					int edgeThreshold) {
-
-			ArrayList<Point> clone = (ArrayList<Point>) origins.clone();
-			
-			for(int i = 0 ; i < toTest.size() ; i++) {
-				Point p = toTest.get(i);
-				clone.remove(p);
-				clone.removeAll(neighbor(p, origins, edgeThreshold));
-			}
-			
-			return clone.size() == 0;
-		}
-		 
-		 */
-		
-		
 		//heuristique de suppression
 		//on parcourt la liste, si le point courant n'est pas un dominant et que si le graphe reste connexe en supprimant le point, on le supprime sinon on passe au suivant
 		public ArrayList<Point> heuristique1(ArrayList<Point> tree, ArrayList<Point> points, int edgeThreshold){
@@ -773,10 +754,10 @@ public class DefaultTeam {
 		
 		
 		
-		public ArrayList<Point> heuristique1AvecBoucle(ArrayList<Point> tree,ArrayList<Point> points, int edgeThreshold){
+		public ArrayList<Point> heuristique1AvecBoucle(ArrayList<Point> tree,ArrayList<Point> points, int edgeThreshold, int n){
 			int i = 0;
 			int nbloopMaxUseful = 0;
-			while(i < 100) {
+			while(i < n) {
 				ArrayList<Point> tmp = heuristique1(tree, points, edgeThreshold);
 				if(tmp.size() < tree.size()) {
 					tree = tmp;
@@ -837,12 +818,185 @@ public class DefaultTeam {
 		
 		
 		
-		//local search
-		//on parcourt le graphe, si on peut remplacer 2 points par 1, on le fait
-		public ArrayList<Point> localSearch1(ArrayList<Point> points, int edgeThreshold){
-			return null;
+		
+		public ArrayList<Point> rest(ArrayList<Point> points, ArrayList<Point> toRemove) {
+			  
+			  ArrayList<Point> res = new ArrayList<>();
+			  res.addAll(points);
+			  
+			  for(Point p:toRemove)
+				  res.remove(p);
+			  
+			  return res;
+		  }
+		
+		
+		
+		
+		public Point clonePoint(Point toClone) {
+						  
+			return new Point(toClone.x, toClone.y);
+		}
+		  
+		  
+		  
+		public ArrayList<Point> cloneList(ArrayList<Point> toClone) {
+			  
+			ArrayList<Point> res = new ArrayList<>();
+			  
+			for(Point p:toClone)
+				res.add(clonePoint(p));
+			  
+			return res;
+		}
+		  
+		  
+		  
+		
+		public ArrayList<Point> neighbor(Point p, ArrayList<Point> vertices, int edgeThreshold){
+			    ArrayList<Point> result = new ArrayList<Point>();
+	
+			    for (Point point:vertices) if (point.distance(p)<edgeThreshold && !point.equals(p)) result.add((Point)point.clone());
+	
+			    return result;
+		 }
+		
+		
+		public boolean isDominant(ArrayList<Point> origins,
+								ArrayList<Point> toTest,
+								int edgeThreshold) {
+
+			ArrayList<Point> clone = cloneList(origins);
+			
+			for(int i = 0 ; i < toTest.size() ; i++) {
+				Point p = toTest.get(i);
+				clone.remove(p);
+				clone.removeAll(neighbor(p, origins, edgeThreshold));
+			}
+			
+			return clone.size() == 0;
 		}
 		
+		
+		
+		
+		//on parcourt le graphe, si on peut remplacer 2 points par 1, on le fait
+		public ArrayList<Point> localSearchV1(ArrayList<Point> origins, ArrayList<Point> solution, ArrayList<Point> reste, int edgeThreshold) {
+			
+			ArrayList<Point> copyReste = cloneList(reste);
+			 
+			ArrayList<Point> tmp = cloneList(solution);	  
+			
+			Random rand = new Random();
+			  
+			Point p = tmp.remove(rand.nextInt(tmp.size()));
+			Point q = tmp.remove(rand.nextInt(tmp.size()));
+			  
+			  
+			  
+			Point r = copyReste.remove(rand.nextInt(reste.size()));
+			  
+			tmp.add(r);
+			  
+			//remplacer estStable par estDominant
+			if( estConnexe(tmp, edgeThreshold) && isDominant(origins, tmp, edgeThreshold) ) {
+				System.out.println("is valid");
+				return tmp;
+			}
+			else {
+				//System.out.println("is not valid");
+				return solution;
+			}
+				  
+		}
+		
+		
+		
+		
+		  public ArrayList<Point> localSearchV12(ArrayList<Point> origins, ArrayList<Point> solution, ArrayList<Point> reste, int edgeThreshold) {
+			  
+			  Random rand = new Random();
+		
+			  Point p = solution.remove(rand.nextInt(solution.size()));
+			  Point q = solution.remove(rand.nextInt(solution.size()));
+			  
+			  Point r = reste.remove(rand.nextInt(reste.size()));
+			  
+			  solution.add(r);
+			  
+			  if(estConnexe(solution, edgeThreshold) && isDominant(origins, solution, edgeThreshold)) {
+				  System.out.println("is valid, new size : "+solution.size());
+				  return solution;
+			  }
+			  else {
+				  
+				  reste.add(r);
+				  solution.add(p);
+				  solution.add(q);
+				  solution.remove(r);
+				  return solution;
+			  }
+				  
+		  }
+		  
+		  
+		  
+		
+		//on parcourt le graphe, si on peut remplacer 2 points par 1, on le fait
+		public ArrayList<Point> loopLocalSearchV1(ArrayList<Point> origins, ArrayList<Point> solution, ArrayList<Point> reste, int edgeThreshold, int n) {
+					
+			ArrayList<Point> res = new ArrayList<>();
+			
+			for(int i=0 ; i<n ; i++) 
+				res = localSearchV12(origins, solution, reste, edgeThreshold);
+			
+			return res;
+		}
+		
+		
+		
+			
+			
+				
+		
+		public ArrayList<Point> permutation(ArrayList<Point> origins, ArrayList<Point> solution, ArrayList<Point> reste, int edgeThreshold) {
+			
+			  Random rand = new Random();
+			  
+			  Point p = solution.remove(rand.nextInt(solution.size()));			  
+			  Point q = reste.remove(rand.nextInt(reste.size()));
+			  
+			  solution.add(q);			  
+			  
+			  if( (estConnexe(solution, edgeThreshold) && isDominant(origins, solution, edgeThreshold) ) ) {
+				  //System.out.println("is valid");
+				  return solution;
+			  }
+			  else {
+				  //System.out.println("is not valid");
+				  solution.remove(q);
+				  solution.add(p);
+				  reste.add(q);
+				  //return tmp;
+				  return solution;
+			  }
+				  
+		  }
+		
+		
+		
+		
+		public ArrayList<Point> loopLocalSearchPermut(ArrayList<Point> origins, ArrayList<Point> solution, ArrayList<Point> reste, int edgeThreshold, int n) {
+			
+			ArrayList<Point> res = localSearchV12(origins, solution, reste, edgeThreshold);
+				
+			for(int i=0 ; i<n ; i++) {
+				res = localSearchV12(origins, solution, rest(origins, res), edgeThreshold);
+				res = permutation(origins, res, rest(origins, res), edgeThreshold);
+			}
+				
+			return res;
+		}
 		
 		
 		
@@ -863,9 +1017,12 @@ public class DefaultTeam {
 	 
 		//return result;
 	    //return heuristique1(result, points, edgeThreshold);
-		//return stable;
+		//return result;
+		//result = heuristique1AvecBoucle(result, points, edgeThreshold, 200);
+		//return result;
 		
-		return heuristique1AvecBoucle(result, points, edgeThreshold);
+		//return loopLocalSearchV1(points, result, reste(points, result), edgeThreshold, 1000000);
+		return loopLocalSearchPermut(points, result, rest(points, result), edgeThreshold, 200000);
 		//return heuristique1AvecOrdreDifferent(result, points, edgeThreshold);
 		//return heuristique1AvecOrdreDifferentAvecBoucle(result, points, edgeThreshold);
 		//return stable;
