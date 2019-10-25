@@ -1,22 +1,26 @@
 package algorithms;
 
 import java.awt.Point;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.PrintStream;
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class DefaultTeam {
 	
-	
+	private static int cpt = 0;
 	
 	public boolean contains(ArrayList<Edge> edges, Point p1, Point p2) {		 
 		for(Edge e:edges) {
@@ -272,15 +276,19 @@ public class DefaultTeam {
 		
 		public Tree2D calculSteiner(ArrayList<Point> points, int edgeThreshold, ArrayList<Point> hitPoints) {
 		    
+			System.out.println("before grapheK");
 			  //etape 1 init graphK
 			  ArrayList<WEdge> grapheK = graphK(points, edgeThreshold, hitPoints);	
 
+			  System.out.println("before kruskal");
 			  //etape 2 kruskal(K)
 			  Tree2D t = kruskal2(grapheK);	  
 			  
+			  System.out.println("before grapheH");
 			  //etape 3 H = traduire T en chemins dans G	 
 			  ArrayList<WEdge> grapheH = fromTreeToPathsOfG(t, points, edgeThreshold);
 			  
+			  System.out.println("before tree");
 			  //etape 4
 			  Tree2D steinerTree = kruskal2(grapheH); 
 			  
@@ -344,14 +352,22 @@ public class DefaultTeam {
 		}
 		
 		public boolean estVoisinDePersonne(Point a, ArrayList<Point> points, int edgeThreshold) {
-			for(Point p:points) {
+			for(int i=0 ; i<points.size() ; i++) {
+				Point p = points.get(i);
 				if(a.distance(p) <= edgeThreshold)return false;
 			}
 			return true;
 		}
 		
 		
+		public boolean estVoisinDePersonneVStream(Point a, ArrayList<Point> points, int edgeThreshold) {
+			
+			Stream<Point> sp = points.stream();			
+			return sp.allMatch(p -> a.distance(p) > edgeThreshold);
+		}
 		
+		
+		/*
 		public ArrayList<Point> getStable1(ArrayList<Point> points, int edgeThreshold){
 			
 			ArrayList<Point> res = new ArrayList<>();		
@@ -372,33 +388,13 @@ public class DefaultTeam {
 			int rand = r.nextInt(points.size());
 			//System.out.println("R "+rand);
 			res.add(points.get(rand));
-			for(Point p:points) {			
+			for(int i=0 ; i<points.size() ; i++) {	
+				Point p = points.get(i);
 				if(estVoisinDePersonne(p, res, edgeThreshold))res.add(p);		
 			}		
 			return res;
 		}
 		
-		
-		
-		/*
-		public ArrayList<Point> stable2(ArrayList<Point> points, int edgeThreshold){
-			
-			ArrayList<Point> res = new ArrayList<>();
-			
-			Random r = new Random();			
-			int rand = r.nextInt(points.size());
-			
-			Point prand = points.remove(rand);
-			res.add(prand);
-			
-			for(Point p:points) {			
-				if(estVoisinDePersonne(p, res, edgeThreshold))res.add(p);
-				else
-					points.add(prand);
-			}		
-			return res;
-		}
-		*/
 		
 		
 		public ArrayList<Point> getStable2(ArrayList<Point> points, int edgeThreshold){
@@ -408,6 +404,40 @@ public class DefaultTeam {
 				//System.out.println("nb pts "+points.size());
 				ArrayList<Point> tmp = stable2(points, edgeThreshold);
 				if(tmp.size() > stable.size())stable = tmp;
+				cpt++;
+			}
+			return stable;		
+		}
+		*/
+		
+		
+		public ArrayList<Point> stable2VStream(ArrayList<Point> points, int edgeThreshold){
+			
+			Random r = new Random();
+			ArrayList<Point> res = new ArrayList<>();
+			int rand = r.nextInt(points.size());
+			res.add(points.get(rand));			
+			
+			Stream<Point> sp = points.stream();			
+			sp.forEach(p -> {
+				if(estVoisinDePersonneVStream(p, res, edgeThreshold))res.add(p);		
+			});
+										
+			return res;
+		}
+		
+		
+		
+				
+		public ArrayList<Point> getStable2VStream(ArrayList<Point> points, int edgeThreshold){
+			
+			ArrayList<Point> stable = stable2VStream(points, edgeThreshold);
+			
+			int cpt=0;
+			while(cpt < 100) {
+				//System.out.println("nb pts "+points.size());
+				ArrayList<Point> tmp = stable2VStream(points, edgeThreshold);
+				if(tmp.size() < stable.size())stable = tmp;
 				cpt++;
 			}
 			return stable;		
@@ -429,40 +459,6 @@ public class DefaultTeam {
 		
 		
 		
-		public ArrayList<Point> getGreyNodes(HashMap<Point, Color> map){
-			ArrayList<Point> greyNodes = new ArrayList<>();
-			
-			for(Entry<Point, Color> entry : map.entrySet()) {
-				if(entry.getValue() == Color.GREY)greyNodes.add(entry.getKey());
-			}
-			return greyNodes;    
-		}
-		
-		
-		
-		
-		//calcule les noeuds gris qui sont voisins d'aucun noeuds gris
-		//on en trouve 2 dans le input points de base
-		public ArrayList<Point> noeudsGrisNonConnectesEntreEux(HashMap<Point, Color> map, int edgeThreshold){
-			ArrayList<Point> greyNodes = new ArrayList<>();
-			
-			for(Entry<Point, Color> entry : map.entrySet()) {
-				if(entry.getValue() == Color.GREY) {
-					Point p1 = entry.getKey();
-					boolean isConnectedToOtherGrey = false;
-					for(Entry<Point, Color> entry2 : map.entrySet()) {
-						Point p2 = entry2.getKey();
-						if(entry2.getValue() == Color.GREY && (!p1.equals(p2))) {						
-							if(p1.distance(p2) <= edgeThreshold)isConnectedToOtherGrey = true;
-						}					
-					}
-					if(!(isConnectedToOtherGrey))greyNodes.add(p1);
-				}				
-			}
-			return greyNodes;    
-		}
-		
-		
 		
 		public ArrayList<Point> getBlackNodes(HashMap<Point, Color> map){
 			ArrayList<Point> blackNodes = new ArrayList<>();
@@ -475,94 +471,13 @@ public class DefaultTeam {
 		
 		
 		
-		public boolean existeGreyNodeAdjToIBlackNodes(HashMap<Point, Color> map, int edgeThreshold, int i) {
-			ArrayList<Point> g = getGreyNodes(map);
-			ArrayList<Point> b = getBlackNodes(map);
-			
-			for(Point p:g) {
-				if(estVoisinDauMoinsN(p, b, edgeThreshold, i)) { 
-					map.put(p, Color.BLUE);
-					return true;
-				}
-			}
-			return false;		
-		}
-		
-		
-		
-		public ArrayList<Point> getBlueNodes(HashMap<Point, Color> map){
-			ArrayList<Point> blueNodes = new ArrayList<>();
-			
-			for(Entry<Point, Color> entry : map.entrySet()) {
-				if(entry.getValue() == Color.BLUE)blueNodes.add(entry.getKey());
-			}
-			return blueNodes;    
-		}
-		
-		
-		
-		//recuperer les noeuds noirs d'un composant
-		public ArrayList<Point> getBlackNodesFromTheBBComp(HashMap<Point, Color> map, ArrayList<Point> comp) {
-			
-			ArrayList<Point> res = new ArrayList<Point>();
-			
-			for(Entry<Point, Color> entry : map.entrySet()) {
-				Point p = entry.getKey();
-				//on parcourt les dominateurs, si ils font partie du composant on les retourne
-				if(entry.getValue() == Color.BLACK) {				
-					if(comp.contains(p)) res.add(p);				
-				}
-			}
-			return res;			
-		}	
-		
-		
-		
-		public Color getColorFromPoint(HashMap<Point, Color> map, Point p) {
-			
-			for(Entry<Point, Color> entry : map.entrySet()) {
-				if(p.equals(entry.getKey()))return entry.getValue();
-			}
-			return null;
-		}
-
-		
-		
-		public boolean estVoisinPointComp(ArrayList<Point> comp, Point p, int edgeThreshold, HashMap<Point, Color> map){
-			
-			//si le point est voisin d'un blacknode du composant, alors il est voisin du composant, on fusionne le point dans le composant
-			ArrayList<Point> blacknodes = getBlackNodesFromTheBBComp(map, comp);
-			
-			for(Point b:blacknodes) {
-				if(b.distance(p) <= edgeThreshold) {
-					//on ajoute le point dans le composant (fusion)
-					comp.add(p);
-					return true;
-				}
-			}
-			return false;
-		}
-		
-		
-		
-		public boolean estPointVoisinDauMoinsIComposants(ArrayList<ArrayList<Point>> comps , Point p, int n, int edgeThreshold , HashMap<Point, Color> map){
-			
-			int tmp = n;
-			
-			for(ArrayList<Point> comp : comps)			
-				if(estVoisinPointComp(comp, p, edgeThreshold, map))tmp--;		
-			
-			if(tmp > 0)return false;
-			return true;
-		}
-		
-		
 		
 		public int nbBlueNodes(HashMap<Point, Color> map) {
 			int sum=0;
 			for(Entry<Point, Color> entry : map.entrySet())if(entry.getValue() == Color.BLUE)sum++;
 			return sum;
 		}
+		
 		
 		
 		
@@ -574,26 +489,14 @@ public class DefaultTeam {
 		
 		
 		
-		public ArrayList<Point> getBBCompOfTheBlackNode(HashMap<Point, Color> map,  Point p, ArrayList<ArrayList<Point>> comps, int edgeThreshold){
-			
-			if(map.get(p) == Color.BLACK) {
-				for(ArrayList<Point> comp : comps) {
-					if(comp.contains(p))return comp;
-				}
-			}
-			return null;
-		}
-		
-		
-		
-		
+				
 		//quand on cherche si le point en parametre (qui est normalement gris) est voisin d'au moins i black nodes
 		public boolean estVoisinDeAtLeastIblackNodesDeDifferentsBBComp(HashMap<Point, Color> map,  Point p, int n, ArrayList<ArrayList<Point>> comps, int edgeThreshold) {		
 					
 			int tmp = 0;
 					
-			for(ArrayList<Point> comp : comps) {
-						
+			for(int i=0 ; i<comps.size() ; i++) {
+				ArrayList<Point> comp = comps.get(i);		
 				if(estVoisinPointComp(comp, p, edgeThreshold, map)){
 					tmp++;
 					if(tmp >= n)return true;
@@ -602,13 +505,50 @@ public class DefaultTeam {
 			return false;		
 		}
 				
+			
+		
+		
+		
+		//recuperer les noeuds noirs d'un composant
+		public ArrayList<Point> getBlackNodesFromTheBBComp(HashMap<Point, Color> map, ArrayList<Point> comp) {
+					
+			ArrayList<Point> res = new ArrayList<Point>();
+					
+			for(Entry<Point, Color> entry : map.entrySet()) {
+				Point p = entry.getKey();
+				//on parcourt les dominateurs, si ils font partie du composant on les retourne
+				if(entry.getValue() == Color.BLACK) {				
+					if(comp.contains(p)) res.add(p);				
+				}
+			}
+			return res;			
+		}	
 				
+				
+				
+		public boolean estVoisinPointComp(ArrayList<Point> comp, Point p, int edgeThreshold, HashMap<Point, Color> map){
+			
+			//si le point est voisin d'un blacknode du composant, alors il est voisin du composant
+			ArrayList<Point> blacknodes = getBlackNodesFromTheBBComp(map, comp);
+			
+			for(int i=0 ; i<blacknodes.size() ; i++) {
+				Point b = blacknodes.get(i);
+				if(b.distance(p) <= edgeThreshold) 					
+					return true;
+				
+			}
+			return false;
+		}
+
+
+
 			
 		public ArrayList<ArrayList<Point>> getCompVoisinsOfPoint(Point p, HashMap<Point, Color> map, int edgeThreshold, ArrayList<ArrayList<Point>> comps){
 				
 			ArrayList<ArrayList<Point>> voisins = new ArrayList<>();
 				
-			for(ArrayList<Point> comp:comps) {
+			for(int i=0 ; i<comps.size() ; i++) {
+				ArrayList<Point> comp = comps.get(i);
 				if(estVoisinPointComp(comp, p, edgeThreshold, map))voisins.add(comp);
 			}
 				
@@ -619,33 +559,51 @@ public class DefaultTeam {
 		
 		public boolean existGreyNodeAdjToAtLeastIBlackNodeInDifferentBBComp(HashMap<Point, Color> map, int edgeThreshold, ArrayList<ArrayList<Point>> comps, int n) {
 			
+			boolean exist = false;
+			long startTime1 = System.nanoTime();
+			
 			for(Entry<Point, Color> entry : map.entrySet()) {
+				
+				cpt++;
 				Point p = entry.getKey();
-				Color c = entry.getValue();
-				if(c == Color.GREY) {
+				Color c = entry.getValue();			
 					
-					//si le point courant gris est voisin de n noeuds noirs de differents black/blue components, on le transforme en bleu, 
-					//on fusionne les composants voisins et on ajoute le noeud courant au resultat de la fusion
-					if(estVoisinDeAtLeastIblackNodesDeDifferentsBBComp(map, p, n, comps, edgeThreshold)) {
-						//le point gris devient un bleu
-						entry.setValue(Color.BLUE);	
-						ArrayList<ArrayList<Point>> compsVoisins = getCompVoisinsOfPoint(p, map, edgeThreshold, comps);
-						//on supprime les comps voisins de la liste des comps,  
-						comps.removeAll(compsVoisins);
-						ArrayList<Point> voisinsInOne = new ArrayList<>();
-						//on les fusionne
-						for(ArrayList<Point> compsv : compsVoisins) {
-							voisinsInOne.addAll(compsv);
-						}
-						//puis ajoute le point,
-						voisinsInOne.add(p);
-						// puis le resultat de tout ca est reinjecte dans la liste des composants
-						comps.add(voisinsInOne);
-						return true;
-					}				
+				
+					
+					
+				//si le point courant gris est voisin de n noeuds noirs de differents black/blue components, on le transforme en bleu, 
+				//on fusionne les composants voisins et on ajoute le noeud courant au resultat de la fusion
+				if(c == Color.GREY && estVoisinDeAtLeastIblackNodesDeDifferentsBBComp(map, p, n, comps, edgeThreshold)) {
+					//le point gris devient un bleu
+					entry.setValue(Color.BLUE);	
+					ArrayList<ArrayList<Point>> compsVoisins = getCompVoisinsOfPoint(p, map, edgeThreshold, comps);
+					//on supprime les comps voisins de la liste des comps,  
+					comps.removeAll(compsVoisins);
+					ArrayList<Point> fusion = new ArrayList<>();
+					//on les fusionne
+					for(ArrayList<Point> compsv : compsVoisins) {
+						fusion.addAll(compsv);
+					}
+					//puis ajoute le point,
+					fusion.add(p);
+					// puis le resultat de tout ca est reinjecte dans la liste des composants
+					comps.add(fusion);
+						
+					exist = true;
 				}
+					
+					
+				
+				//System.out.println("cpt : "+cpt);
+				
 			}
-			return false;
+			
+			long endTime1 = System.nanoTime();
+			long duration = endTime1-startTime1;
+			duration = duration / 1000000;
+			System.out.println("Time function : "+duration+"ms");
+			
+			return exist;
 		}
 		
 		
@@ -655,6 +613,8 @@ public class DefaultTeam {
 			ArrayList<Point> dominants = getBlackNodes(map);
 			ArrayList<ArrayList<Point>> components = new ArrayList<>();		
 			
+			
+
 			//au depart chaque noeud de l'ensemble dominant est considere comme un composant bleu/noir connexe
 			for(int i = 0 ; i < dominants.size() ; i++){
 				
@@ -662,15 +622,23 @@ public class DefaultTeam {
 				components.get(i).add(dominants.get(i));
 			}			
 			
+			
+	
 			for(int i = 5 ; i >= 2 ; i--) {
 
+				
+				
 				while(existGreyNodeAdjToAtLeastIBlackNodeInDifferentBBComp(map, edgeThreshold, components, i)) {
 					//System.out.println("nb blue nodes "+nbBlueNodes(map));
 					//System.out.println("nb grey nodes "+nbGreyNodes(map));
+					
 				}
+				//System.out.println("cpt : "+cpt);
+				
 			}
 					
 			for(Entry<Point, Color> entry : map.entrySet())if(entry.getValue() == Color.BLUE)res.add(entry.getKey());
+			//System.out.println("nb blue nodes "+nbBlueNodes(map));
 			res.addAll(dominants);
 			
 			return res;
@@ -743,7 +711,7 @@ public class DefaultTeam {
 					
 				tmp.remove(p);
 				//si le graphe avec suppression du point courant est connexe et tjr un ens dominant, on maj le graphe
-				if(estConnexe(tmp, edgeThreshold) && estStable(points, tmp, edgeThreshold)) {
+				if(estConnexe(tmp, edgeThreshold) && isDominant(points, tmp, edgeThreshold)) {
 					//System.out.println("estCONNEXE");
 					res = tmp;				
 				}						
@@ -759,53 +727,6 @@ public class DefaultTeam {
 			int nbloopMaxUseful = 0;
 			while(i < n) {
 				ArrayList<Point> tmp = heuristique1(tree, points, edgeThreshold);
-				if(tmp.size() < tree.size()) {
-					tree = tmp;
-					nbloopMaxUseful++;
-				}
-				i++;
-			}
-			System.out.println(nbloopMaxUseful);
-			return tree;
-		}
-		
-		
-		
-		//on calcule de nouveaux graphes en parcourant de maniere random et on garde le meilleur res
-		public ArrayList<Point> heuristique1AvecOrdreDifferent(ArrayList<Point> tree, ArrayList<Point> points, int edgeThreshold){
-			
-			ArrayList<Integer> randomUsed = new ArrayList<Integer>();
-			ArrayList<Point> res = new ArrayList<Point>(tree);
-			
-			//parcours dans l'ordre de la liste
-			for(Point p:tree) {
-				//System.out.println("ICI");
-				ArrayList<Point> tmp = new ArrayList<>(tree);
-				Random r = new Random();
-				Integer rand = (Integer)r.nextInt(tree.size() - 1);
-				while(randomUsed.contains(randomUsed.get(rand.intValue()))) {
-					rand = (Integer)r.nextInt(tree.size() - 1);
-					System.out.println("dans while");
-				}
-				randomUsed.add(rand);
-				tmp.remove(rand.intValue());
-				//si le graphe avec suppression du point courant est connexe et tjr un ens dominant, on maj le graphe
-				if(estConnexe(tmp, edgeThreshold) && estStable(points, tmp, edgeThreshold)) {
-					//System.out.println("estCONNEXE");
-					res = tmp;				
-				}						
-			}
-			
-			return res;	
-		}
-		
-		
-		
-		public ArrayList<Point> heuristique1AvecOrdreDifferentAvecBoucle(ArrayList<Point> tree,ArrayList<Point> points, int edgeThreshold){
-			int i = 0;
-			int nbloopMaxUseful = 0;
-			while(i < 200) {
-				ArrayList<Point> tmp = heuristique1AvecOrdreDifferent(tree, points, edgeThreshold);
 				if(tmp.size() < tree.size()) {
 					tree = tmp;
 					nbloopMaxUseful++;
@@ -924,7 +845,7 @@ public class DefaultTeam {
 			  
 			  solution.add(r);
 			  
-			  if(estConnexe(solution, edgeThreshold) && isDominant(origins, solution, edgeThreshold)) {
+			  if ( estConnexe(solution, edgeThreshold) && isDominant(origins, solution, edgeThreshold) ) {
 				  System.out.println("is valid, new size : "+solution.size());
 				  return solution;
 			  }
@@ -968,7 +889,7 @@ public class DefaultTeam {
 			  
 			  solution.add(q);			  
 			  
-			  if( (estConnexe(solution, edgeThreshold) && isDominant(origins, solution, edgeThreshold) ) ) {
+			  if( estConnexe(solution, edgeThreshold) && isDominant(origins, solution, edgeThreshold) ) {
 				  //System.out.println("is valid");
 				  return solution;
 			  }
@@ -1003,28 +924,43 @@ public class DefaultTeam {
 		
   public ArrayList<Point> calculConnectedDominatingSet(ArrayList<Point> points, int edgeThreshold) {
 	//etape 1 calcul MIS, (on peut tenter de maximiser sa taille avec getStable2)
+	 //Tree2D steinerT = calculSteiner(points, edgeThreshold, points);
+	 //ArrayList<Point> stable = fromWEdgesToPoints(fromTreeToWEdges(steinerT));
 	  //ArrayList<Point> stable = stable2(points, edgeThreshold);
-		ArrayList<Point> stable = getStable2(points, edgeThreshold);
+	  
+	  
+	  
+	 ArrayList<Point> stable = getStable2VStream(points, edgeThreshold);	 
+	
 		
 	//etape 2 marquage
-		HashMap<Point, Color> mark = marquageInit(points, stable);	
+	 
+	
+		HashMap<Point, Color> mark = marquageInit(points, stable);			
+		 
 		
 	//etape 3 calcul CDS	
 		//ArrayList<Point> result = calculSteiner2(stable, points, edgeThreshold);;
+		 
 		ArrayList<Point> result = AlgoAv2(mark, edgeThreshold);
-
+		
+		
+		
+		
+		
+		
+	    
+	    
 		//result = fromWEdgesToPoints(fromTreeToWEdges(calculSteiner(points, edgeThreshold, stable))); 
 	 
-		//return result;
-	    //return heuristique1(result, points, edgeThreshold);
-		//return result;
+		
+		return result;
 		//result = heuristique1AvecBoucle(result, points, edgeThreshold, 200);
 		//return result;
 		
 		//return loopLocalSearchV1(points, result, reste(points, result), edgeThreshold, 1000000);
-		return loopLocalSearchPermut(points, result, rest(points, result), edgeThreshold, 200000);
-		//return heuristique1AvecOrdreDifferent(result, points, edgeThreshold);
-		//return heuristique1AvecOrdreDifferentAvecBoucle(result, points, edgeThreshold);
+		//return loopLocalSearchPermut(points, result, rest(points, result), edgeThreshold, 50000);
+		
 		//return stable;
   }
   
