@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -86,8 +87,10 @@ public class DefaultTeam {
 	      double[][] dist = distances(points, edgeThreshold);
 		  ArrayList<WEdge> grapheK = new ArrayList<>();
 		  
-		  for(Point u:hitPoints){
-			  for(Point v:hitPoints){
+		  for(int i=0 ; i<hitPoints.size() ; i++){
+			  for(int j=0 ; j<hitPoints.size() ; j++){
+				  Point u = hitPoints.get(i);
+				  Point v = hitPoints.get(j);
 				  if(u.equals(v)) continue;					 
 				  grapheK.add(new WEdge(u, v, dist[points.indexOf(u)][points.indexOf(v)]));				  
 			  }
@@ -143,7 +146,25 @@ public class DefaultTeam {
 		
 		return res;
 	}
-		 
+		
+	
+	
+	public ArrayList<WEdge> trierWEdgesStream(ArrayList<WEdge> wedges){  
+		
+		List<WEdge> res = wedges.parallelStream()
+								.filter(we -> we.getPoids() != Double.POSITIVE_INFINITY)
+								.sorted(Comparator.comparing(WEdge::getPoids))								
+								.collect(Collectors.toList());
+		/*
+		res.forEach(we -> {			
+			System.out.println(we.getPoids()); 
+		});
+		*/
+		
+		return (ArrayList<WEdge>) res;
+	}
+	
+	
 		 
 		 
 		private Tree2D wedgesToTree(ArrayList<WEdge> wedges, Point root) { //pour exo 2
@@ -175,18 +196,20 @@ public class DefaultTeam {
 		 
 		 
 		 
-		public Tree2D kruskal2(ArrayList<WEdge> wedges) {		  
+		public Tree2D kruskal(ArrayList<WEdge> wedges) {		  
 			  
 			  	ArrayList<Point> points = fromWEdgesToPoints(wedges);	  	
 				ArrayList<WEdge> aretes = (ArrayList<WEdge>) wedges.clone();
 				
-				ArrayList<WEdge> candidatesTriees = new ArrayList<WEdge>();
-				candidatesTriees = trierWEdges(aretes);
+				ArrayList<WEdge> candidatesTriees = trierWEdges(aretes);
+				
 				ArrayList<WEdge> solution = new ArrayList<WEdge>();		
-
+				
 			    WEdge current;
 			    NameTag forest = new NameTag(points);
+			    
 			    while (candidatesTriees.size()!=0) {
+			    	
 			      current = candidatesTriees.remove(0);
 			      if (forest.tag(current.getP1())!=forest.tag(current.getP2())) {
 			        solution.add(current);
@@ -196,6 +219,33 @@ public class DefaultTeam {
 			    return wedgesToTree(solution,solution.get(0).getP1());	    
 		 	}
 			
+		
+		
+		public Tree2D kruskalStreamSort(ArrayList<WEdge> wedges) {		  
+			  
+		  	ArrayList<Point> points = fromWEdgesToPoints(wedges);	  	
+			ArrayList<WEdge> aretes = (ArrayList<WEdge>) wedges.clone();
+			
+			ArrayList<WEdge> candidatesTriees = trierWEdgesStream(aretes);
+						
+			ArrayList<WEdge> solution = new ArrayList<WEdge>();		
+			
+		    WEdge current;
+		    NameTag forest = new NameTag(points);
+		    
+		    while (candidatesTriees.size()!=0) {
+		    	
+		      current = candidatesTriees.remove(0);
+		      if (forest.tag(current.getP1())!=forest.tag(current.getP2())) {
+		        solution.add(current);
+		        forest.reTag(forest.tag(current.getP1()),forest.tag(current.getP2()));
+		      }
+		    }
+		    return wedgesToTree(solution,solution.get(0).getP1());	    
+	 	}
+		
+		
+		
 		public ArrayList<WEdge> fromTreeToWEdges(Tree2D tree){ 		 
 
 				 ArrayList<WEdge> res = new ArrayList<>();
@@ -276,23 +326,18 @@ public class DefaultTeam {
 		
 		public Tree2D calculSteiner(ArrayList<Point> points, int edgeThreshold, ArrayList<Point> hitPoints) {
 		    
-			System.out.println("before grapheK");
 			  //etape 1 init graphK
 			  ArrayList<WEdge> grapheK = graphK(points, edgeThreshold, hitPoints);	
 
-			  System.out.println("before kruskal");
 			  //etape 2 kruskal(K)
-			  Tree2D t = kruskal2(grapheK);	  
+			  Tree2D t = kruskalStreamSort(grapheK);	  
 			  
-			  System.out.println("before grapheH");
 			  //etape 3 H = traduire T en chemins dans G	 
 			  ArrayList<WEdge> grapheH = fromTreeToPathsOfG(t, points, edgeThreshold);
 			  
-			  System.out.println("before tree");
 			  //etape 4
-			  Tree2D steinerTree = kruskal2(grapheH); 
-			  
-			  //etape 5
+			  Tree2D steinerTree = kruskalStreamSort(grapheH); 
+			
 			  return steinerTree;
 		  }
 		
@@ -314,25 +359,51 @@ public class DefaultTeam {
 		
 		
 		
-		public ArrayList<Point> calculSteiner2(ArrayList<Point> points, ArrayList<Point> allPoints, int edgeThreshold) {
+		public ArrayList<Point> calculSteiner2(ArrayList<Point> hitPoints, ArrayList<Point> points, int edgeThreshold) {
 
-			int [][] distPath = calculShortestPaths(allPoints, edgeThreshold);
+			int [][] distPath = calculShortestPaths(points, edgeThreshold);
 		
-			ArrayList<WEdge> graphK = graphK(allPoints, edgeThreshold, points);		
+			ArrayList<WEdge> graphK = graphK(points, edgeThreshold, hitPoints);		
 			
-			ArrayList<WEdge> kruskalK = fromTreeToWEdges(kruskal2(graphK));
+			ArrayList<WEdge> kruskalK = fromTreeToWEdges(kruskal(graphK));
 			
 			ArrayList<Point> steiner = new ArrayList<Point>();
 			
 			for(int i = 0 ; i < kruskalK.size() ; i++){
 				WEdge e = kruskalK.get(i);
-				ArrayList<Point> p = thePath(e,allPoints,distPath);
+				ArrayList<Point> p = thePath(e,points,distPath);
 				for(Point p1 : p)
 					if(!steiner.contains(p1)) 
 						steiner.add(p1);				
 			}
 			return steiner;
 		}
+		
+		
+		
+		
+		public ArrayList<Point> calculSteiner2StreamSort(ArrayList<Point> hitPoints, ArrayList<Point> points, int edgeThreshold) {
+
+			int [][] distPath = calculShortestPaths(points, edgeThreshold);
+		
+			ArrayList<WEdge> graphK = graphK(points, edgeThreshold, hitPoints);		
+			
+			ArrayList<WEdge> kruskalK = fromTreeToWEdges(kruskalStreamSort(graphK));
+			
+			ArrayList<Point> steiner = new ArrayList<Point>();
+			
+			for(int i = 0 ; i < kruskalK.size() ; i++){
+				WEdge e = kruskalK.get(i);
+				ArrayList<Point> p = thePath(e,points,distPath);
+				for(Point p1 : p)
+					if(!steiner.contains(p1)) 
+						steiner.add(p1);				
+			}
+			return steiner;
+		}
+		
+		
+		
 		
 		public boolean estVoisin(Point a, Point b,  int edgeThreshold) {
 			
@@ -560,17 +631,13 @@ public class DefaultTeam {
 		public boolean existGreyNodeAdjToAtLeastIBlackNodeInDifferentBBComp(HashMap<Point, Color> map, int edgeThreshold, ArrayList<ArrayList<Point>> comps, int n) {
 			
 			boolean exist = false;
-			long startTime1 = System.nanoTime();
-			
+						
 			for(Entry<Point, Color> entry : map.entrySet()) {
 				
 				cpt++;
 				Point p = entry.getKey();
 				Color c = entry.getValue();			
-					
-				
-					
-					
+									
 				//si le point courant gris est voisin de n noeuds noirs de differents black/blue components, on le transforme en bleu, 
 				//on fusionne les composants voisins et on ajoute le noeud courant au resultat de la fusion
 				if(c == Color.GREY && estVoisinDeAtLeastIblackNodesDeDifferentsBBComp(map, p, n, comps, edgeThreshold)) {
@@ -597,18 +664,13 @@ public class DefaultTeam {
 				//System.out.println("cpt : "+cpt);
 				
 			}
-			
-			long endTime1 = System.nanoTime();
-			long duration = endTime1-startTime1;
-			duration = duration / 1000000;
-			System.out.println("Time function : "+duration+"ms");
-			
+		
 			return exist;
 		}
 		
 		
 		
-		public ArrayList<Point> AlgoAv2(HashMap<Point, Color> map, int edgeThreshold){
+		public ArrayList<Point> AlgoA(HashMap<Point, Color> map, int edgeThreshold){
 			ArrayList<Point> res = new ArrayList<>();
 			ArrayList<Point> dominants = getBlackNodes(map);
 			ArrayList<ArrayList<Point>> components = new ArrayList<>();		
@@ -940,26 +1002,47 @@ public class DefaultTeam {
 		 
 		
 	//etape 3 calcul CDS	
-		//ArrayList<Point> result = calculSteiner2(stable, points, edgeThreshold);;
-		 
-		ArrayList<Point> result = AlgoAv2(mark, edgeThreshold);
+		//ArrayList<Point> result = calculSteiner2(stable, points, edgeThreshold);;	
+		//ArrayList<Point> result = calculSteiner2StreamSort(points, points, edgeThreshold);
+		ArrayList<Point> result = AlgoA(mark, edgeThreshold);
+		
+		//ArrayList<WEdge> graphK = graphK(points, edgeThreshold, points);	
+		//ArrayList<WEdge> kruskalK = fromTreeToWEdges(kruskalStreamSort(graphK));
+		//ArrayList<Point> result = fromWEdgesToPoints(kruskalK);
 		
 		
 		
 		
 		
+		//ArrayList<WEdge> gK = graphK(points, edgeThreshold, points);
 		
-	    
-	    
-		//result = fromWEdgesToPoints(fromTreeToWEdges(calculSteiner(points, edgeThreshold, stable))); 
-	 
+		//long startTime1 = System.nanoTime();
 		
-		return result;
+		//trierWEdgesStream(gK);
+		/*
+		Tree2D couvrant = calculSteiner(points, edgeThreshold, points);
+		
+		long endTime1 = System.nanoTime();
+		long duration = endTime1-startTime1;
+		duration = duration / 1000000;
+		System.out.println("Time function : "+duration+"ms");
+				
+		
+		ArrayList<Point> result = fromWEdgesToPoints(fromTreeToWEdges(couvrant));
+		*/
+		/*
+		ArrayList<Point> sub = new ArrayList<>(points);
+		sub.removeAll(result);
+		System.out.println("here "+points.indexOf(sub.get(0)));
+		*/
+		
+		//result.add(points.get(978));
+		
 		//result = heuristique1AvecBoucle(result, points, edgeThreshold, 200);
-		//return result;
+		return result;
 		
 		//return loopLocalSearchV1(points, result, reste(points, result), edgeThreshold, 1000000);
-		//return loopLocalSearchPermut(points, result, rest(points, result), edgeThreshold, 50000);
+		//return loopLocalSearchPermut(points, result, rest(points, result), edgeThreshold, 100000);
 		
 		//return stable;
   }
