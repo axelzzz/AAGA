@@ -11,10 +11,15 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -516,6 +521,228 @@ public class DefaultTeam {
 		
 		
 		
+		
+		 public Point pointDegreMax(LinkedHashMap<Point, Integer> mapPtsDeg, int edgeThreshold) {
+			  
+			  Iterator it = mapPtsDeg.entrySet().iterator();
+			  	
+		      Map.Entry<Point, Integer> pair = (Map.Entry<Point, Integer>)it.next();
+		      
+		      Point pointMaxVoisins = pair.getKey();
+		      int max = Integer.valueOf(pair.getValue());
+			  //System.out.println(pair.getKey() + " CSCSDVSDVC= " + pair.getValue());
+			  
+			  
+			  while (it.hasNext()) {
+				  Map.Entry<Point, Integer> pairSuite = (Map.Entry<Point, Integer>)it.next();
+				  //System.out.println(pairSuite.getKey() + " C= " + pairSuite.getValue());
+				 if(Integer.valueOf(pairSuite.getValue() ) > max ) {
+					 max = Integer.valueOf(pairSuite.getValue() );
+					 pointMaxVoisins = pairSuite.getKey();
+				 }
+					 
+			  }
+			  
+			  //System.out.println(pointMaxVoisins + " DEG max = " + max);
+			  
+			  return pointMaxVoisins;
+		  }
+		 
+		 
+		
+		
+		 public Point pointDegreMin(LinkedHashMap<Point, Integer> mapPtsDeg, int edgeThreshold) {
+			  
+			  Iterator it = mapPtsDeg.entrySet().iterator();
+			  	
+		      Map.Entry<Point, Integer> pair = (Map.Entry<Point, Integer>)it.next();
+		      
+		      Point pointMinVoisins = pair.getKey();
+		      int min = Integer.valueOf(pair.getValue());
+			  
+			  while (it.hasNext()) {
+				  Map.Entry<Point, Integer> pairSuite = (Map.Entry<Point, Integer>)it.next();
+				 
+				 if(Integer.valueOf(pairSuite.getValue() ) < min ) {
+					 min = Integer.valueOf(pairSuite.getValue() );
+					 pointMinVoisins = pairSuite.getKey();
+				 }
+					 
+			  }
+			  
+			  //System.out.println(pointMinVoisins + " DEG min = " + min);
+			  
+			  return pointMinVoisins;
+		  }
+	  
+		 
+		 
+		 public LinkedHashMap<Point,Integer> initMapAssocPtsDeg(ArrayList<Point> points, int edgeThreshold) {
+			  
+			  LinkedHashMap<Point,Integer> assocPointsDegres = new LinkedHashMap<Point, Integer>();
+			  
+			  for(Point p:points) {
+				  assocPointsDegres.put( p, Integer.valueOf( neighbor(p, points, edgeThreshold).size() ) );
+			  }
+			  
+			  return assocPointsDegres;
+		  }
+		 
+		 
+		 
+		 public LinkedHashMap<Point, Integer> cloneMap(LinkedHashMap<Point, Integer> assocPtsDeg) {
+			  
+			  LinkedHashMap<Point, Integer> copyMap = new LinkedHashMap<Point, Integer>();
+			  
+			  Iterator it = assocPtsDeg.entrySet().iterator();
+			  
+			  while (it.hasNext()) {
+				  Map.Entry<Point, Integer> pair = (Map.Entry<Point, Integer>)it.next();
+			      copyMap.put(new Point(pair.getKey()), Integer.valueOf(pair.getValue().intValue()) );
+			  }
+			  
+			  return copyMap;
+		  }
+		 
+		 
+		 		
+		public ArrayList<Point> stableDegreMax(ArrayList<Point> points, int edgeThreshold, LinkedHashMap<Point, Integer> assocPtsDeg) {
+			
+			ArrayList<Point> stable = new ArrayList<>();
+			LinkedHashMap<Point, Integer> copy = cloneMap(assocPtsDeg);
+			
+			while(copy.size() != 0) {
+				
+				Point degMax = pointDegreMax(copy, edgeThreshold);
+				ArrayList<Point> voisinsDegMax = neighbor(degMax, points, edgeThreshold);
+				
+				stable.add(degMax);
+				copy.remove(degMax);
+				for(int i=0 ; i<voisinsDegMax.size() ; i++) copy.remove(voisinsDegMax.get(i));
+			}
+			
+			return stable;
+			
+		}
+		
+		
+		
+		
+		public ArrayList<Point> stableDegreMin(ArrayList<Point> points, int edgeThreshold, LinkedHashMap<Point, Integer> assocPtsDeg) {
+			
+			ArrayList<Point> stable = new ArrayList<>();
+			LinkedHashMap<Point, Integer> copy = cloneMap(assocPtsDeg);
+			
+			while(copy.size() != 0) {
+				
+				Point degMax = pointDegreMin(copy, edgeThreshold);
+				ArrayList<Point> voisinsDegMin = neighbor(degMax, points, edgeThreshold);
+				
+				stable.add(degMax);
+				copy.remove(degMax);
+				for(int i=0 ; i<voisinsDegMin.size() ; i++) copy.remove(voisinsDegMin.get(i));
+			}
+			
+			return stable;
+			
+		}
+
+		
+		
+		
+		
+		public int getEffectiveDegree(Point p, int[] color, ArrayList<Point> points, int edgeThreshold) {
+			int effectiveDegree = 0;
+
+			//ArrayList<Point> neighborList = neighbor(p, points, edgeThreshold);
+			ArrayList<Point> neighborList = neighbor(p, points, edgeThreshold);
+			
+			for (Point n : neighborList) {
+				if (color[points.indexOf(n)] == 0) {
+					effectiveDegree++;
+				}
+			}
+
+			return effectiveDegree;
+		}
+		
+		
+
+		
+		public boolean hasWhiteVertex(ArrayList<Point> points, int[] color) {
+
+			
+			for (Point p : points) {
+				if (color[points.indexOf(p)] == 0) 
+					return true;
+				
+			}
+
+			return false;
+		}
+		
+		
+		
+		
+		
+		private ArrayList<Point> MIS_Cheng(ArrayList<Point> points, int edgeThreshold, LinkedHashMap<Point, Integer> assocPtsDeg) {
+			ArrayList<Point> MIS = new ArrayList<Point>();
+
+			int[] color = new int[points.size()]; // color[0]-color[size-1], 0=white, 1=black, 2=gray
+
+			int max = -1;
+
+			Random r = new Random();
+			//Point next = pointDegreMax(assocPtsDeg, edgeThreshold);
+			Point next = pointDegreMin(assocPtsDeg, edgeThreshold);
+			//Point next = points.get(r.nextInt( points.size()) );
+			
+			ArrayList<Point> neighborList = new ArrayList<Point>();
+			ArrayList<Point> neighborWhiteList = new ArrayList<Point>();
+			ArrayList<Point> activeList = new ArrayList<Point>();
+
+			do {
+				int index = points.indexOf(next);
+				color[index] = 1;
+				MIS.add(points.get(index));
+
+				neighborList = neighbor(points.get(index), points, edgeThreshold);
+				
+				neighborWhiteList = new ArrayList<Point>();
+				for (Point n : neighborList) {
+					if (color[points.indexOf(n)] == 0) {
+						color[points.indexOf(n)] = 2;
+						neighborWhiteList.add(n);
+					}
+				}
+
+				for (Point n : neighborWhiteList) {
+					for (Point nn : neighbor(n, points, edgeThreshold)) {
+						if (color[points.indexOf(nn)] == 0) {
+							activeList.add(nn);
+						}
+					}
+				}
+
+				activeList = supprimerDoublons(activeList);				
+				
+				max = -1;
+				for (Point a : activeList) {
+					if (color[points.indexOf(a)] == 0) {
+						int tmp = getEffectiveDegree(a, color, points, edgeThreshold);
+						if (tmp > max) {
+							max = tmp;
+							next = (Point) a.clone();
+						}
+					}
+				}
+			} while (hasWhiteVertex(points, color));
+
+			return MIS;
+		}
+
+		
+		
 		public HashMap<Point, Color> marquageInit(ArrayList<Point> udg, ArrayList<Point> mis){
 			
 			HashMap<Point, Color> res = new HashMap<>();		
@@ -740,26 +967,6 @@ public class DefaultTeam {
 		
 		
 		
-		//chaque point de l'ensemble de depart est soit dans toTest soit un voisin d'au moins un point de toTest
-		public boolean estStable(ArrayList<Point> points, ArrayList<Point> toTest, int edgeThreshold){
-	        int cpt=0;
-
-	        for(Point p: points){
-	            for(Point q : toTest){
-	                if( !p.equals(q) && p.distance(q) < edgeThreshold)
-	                    cpt ++;
-	            }
-	            if(cpt == 0)
-	                return false;
-	            cpt =0;
-	        }
-
-	        return true;
-	    }
-		
-		
-		
-		
 		//heuristique de suppression
 		//on parcourt la liste, si le point courant n'est pas un dominant et que si le graphe reste connexe en supprimant le point, on le supprime sinon on passe au suivant
 		public ArrayList<Point> heuristique1(ArrayList<Point> tree, ArrayList<Point> points, int edgeThreshold){
@@ -839,10 +1046,22 @@ public class DefaultTeam {
 		public ArrayList<Point> neighbor(Point p, ArrayList<Point> vertices, int edgeThreshold){
 			    ArrayList<Point> result = new ArrayList<Point>();
 	
-			    for (Point point:vertices) if (point.distance(p)<edgeThreshold && !point.equals(p)) result.add((Point)point.clone());
+			    for (Point point:vertices) if (point.distance(p)<=edgeThreshold && !point.equals(p)) result.add((Point)point.clone());
 	
 			    return result;
 		 }
+		
+		
+		
+		public ArrayList<Point> supprimerDoublons(ArrayList<Point> origins) {
+			  
+		      Set<Point> set = new LinkedHashSet<Point>() ;
+		      set.addAll(origins) ;
+		      ArrayList<Point> res = new ArrayList<>(set) ;	
+		      //System.out.println("size list after supp doublons "+res.size());
+		      return res;
+				  
+		  }
 		
 		
 		public boolean isDominant(ArrayList<Point> origins,
@@ -977,7 +1196,8 @@ public class DefaultTeam {
 				res = localSearchV12(origins, solution, rest(origins, res), edgeThreshold);
 				res = permutation(origins, res, rest(origins, res), edgeThreshold);
 			}
-				
+			
+			System.out.println("finito");
 			return res;
 		}
 		
@@ -985,24 +1205,30 @@ public class DefaultTeam {
 		
 		
   public ArrayList<Point> calculConnectedDominatingSet(ArrayList<Point> points, int edgeThreshold) {
-	//etape 1 calcul MIS, (on peut tenter de maximiser sa taille avec getStable2)
+	  
+	
+	  points = supprimerDoublons(points);
+	  
+	  LinkedHashMap<Point, Integer> map = initMapAssocPtsDeg(points, edgeThreshold);
+	  
+	//etape 1 calcul MIS
 	 //Tree2D steinerT = calculSteiner(points, edgeThreshold, points);
 	 //ArrayList<Point> stable = fromWEdgesToPoints(fromTreeToWEdges(steinerT));
 	  //ArrayList<Point> stable = stable2(points, edgeThreshold);
 	  
+	 //ArrayList<Point> stable = getStable2VStream(points, edgeThreshold);	 
+	//ArrayList<Point> stable = stableDegreMax(points, edgeThreshold, map);
+	  ArrayList<Point> mis = MIS_Cheng(points, edgeThreshold, map);
+	  System.out.println("SIZE MIS "+mis.size());
 	  
-	  
-	 ArrayList<Point> stable = getStable2VStream(points, edgeThreshold);	 
-	
-		
 	//etape 2 marquage
 	 
 	
-		HashMap<Point, Color> mark = marquageInit(points, stable);			
+		HashMap<Point, Color> mark = marquageInit(points, mis);			
 		 
 		
 	//etape 3 calcul CDS	
-		//ArrayList<Point> result = calculSteiner2(stable, points, edgeThreshold);;	
+		//ArrayList<Point> result = calculSteiner2(mis, points, edgeThreshold);;	
 		//ArrayList<Point> result = calculSteiner2StreamSort(points, points, edgeThreshold);
 		ArrayList<Point> result = AlgoA(mark, edgeThreshold);
 		
@@ -1042,8 +1268,9 @@ public class DefaultTeam {
 		return result;
 		
 		//return loopLocalSearchV1(points, result, reste(points, result), edgeThreshold, 1000000);
-		//return loopLocalSearchPermut(points, result, rest(points, result), edgeThreshold, 100000);
+		//return loopLocalSearchPermut(points, result, rest(points, result), edgeThreshold, 400000);
 		
+		//return mis;
 		//return stable;
   }
   
